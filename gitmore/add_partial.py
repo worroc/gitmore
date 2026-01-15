@@ -237,7 +237,10 @@ def build_patch(header: str, hunks: list[dict]) -> str:
     for hunk in hunks:
         parts.append(hunk["header"])
         parts.extend(hunk["lines"])
-    return "\n".join(parts)
+    result = "\n".join(parts)
+    if not result.endswith("\n"):
+        result += "\n"
+    return result
 
 
 def apply_patch(patch: str) -> bool:
@@ -258,7 +261,7 @@ def apply_patch(patch: str) -> bool:
 @click.argument("file")
 @click.option("--list", "-l", "list_hunks", is_flag=True, help="List available hunks")
 @click.option("--hunks", "-H", help="Hunk numbers to stage (e.g., '1,3,5' or '1-3')")
-@click.option("--hunk", "-k", type=int, help="Single hunk number for line-level staging")
+@click.option("--hunk", "-K", type=int, help="Single hunk number for line-level staging")
 @click.option("--lines", "-L", help="Line numbers within hunk to stage (e.g., '1-3,5')")
 def add_partial(file: str, list_hunks: bool, hunks: str, hunk: int, lines: str):
     """
