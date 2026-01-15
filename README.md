@@ -37,3 +37,14 @@ gitmore add-partial myfile.py --hunks 1-3
 ```bash
 gitmore add-partial myfile.py --hunk 2 --lines 1-3,5
 ```
+
+## Claude Code Integration
+
+Teach Claude Code when and how to use gitmore:
+
+```bash
+./add-claude-skill.sh
+```
+
+This installs a skill to `~/.claude/skills/gitmore` that helps Claude
+use gitmore for selective staging tasks.
