@@ -17,5 +17,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["gitmore"]
 
+[tool.pytest.ini_options]
+addopts = "--cov=gitmore --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests"]
+
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=7.0.0",
+]
