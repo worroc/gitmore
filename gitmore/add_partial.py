@@ -260,19 +260,24 @@ def apply_patch(patch: str) -> bool:
 @click.command("add-partial")
 @click.argument("file")
 @click.option("--list", "-l", "list_hunks", is_flag=True, help="List available hunks")
-@click.option("--hunks", "-H", help="Hunk numbers to stage (e.g., '1,3,5' or '1-3')")
-@click.option("--hunk", "-K", type=int, help="Single hunk number for line-level staging")
-@click.option("--lines", "-L", help="Line numbers within hunk to stage (e.g., '1-3,5')")
-def add_partial(file: str, list_hunks: bool, hunks: str, hunk: int, lines: str):
+@click.option("--hunk", "-H", help="Hunk numbers to stage (e.g., '1', '1,3', '1-3')")
+@click.option("--lines", "-L", help="Line numbers within a single hunk to stage (e.g., '1-3,5')")
+def add_partial(file: str, list_hunks: bool, hunk: str, lines: str):
     """
     Stage specific hunks or lines from a file non-interactively.
 
     \b
     Examples:
-        gitmore add-partial myfile.py --list
-        gitmore add-partial myfile.py --hunks 1,3
-        gitmore add-partial myfile.py --hunk 2 --lines 1-3
+        gitmore add-partial myfile.py                        # list hunks
+        gitmore add-partial myfile.py --list                 # list hunks
+        gitmore add-partial myfile.py --hunk 1,3             # stage hunks 1 and 3
+        gitmore add-partial myfile.py --hunk 2 --lines 1-3   # stage lines 1-3 from hunk 2
     """
+    if lines and not hunk:
+        raise click.UsageError("--lines requires --hunk")
+    if list_hunks and (hunk or lines):
+        raise click.UsageError("--list cannot be combined with --hunk or --lines")
+
     diff = get_diff(file)
     if not diff:
         click.echo(f"No unstaged changes in {file}")
@@ -284,7 +289,8 @@ def add_partial(file: str, list_hunks: bool, hunks: str, hunk: int, lines: str):
         click.echo("No hunks found")
         return
 
-    if list_hunks:
+    # Default to listing when no action specified
+    if not hunk:
         click.echo(f"Found {len(hunk_list)} hunk(s) in {file}:\n")
         for i, h in enumerate(hunk_list, 1):
             click.echo(f"=== Hunk {i} ===")
@@ -301,14 +307,14 @@ def add_partial(file: str, list_hunks: bool, hunks: str, hunk: int, lines: str):
             click.echo()
         return
 
-    if hunk and lines:
+    if lines:
         # Line-level staging within a single hunk
-        if hunk < 1 or hunk > len(hunk_list):
-            click.echo(f"Invalid hunk number {hunk} (available: 1-{len(hunk_list)})", err=True)
-            sys.exit(1)
+        selected_hunks = parse_spec(hunk, len(hunk_list))
+        if len(selected_hunks) != 1:
+            raise click.UsageError("--lines requires a single --hunk number, not a range")
 
-        target_hunk = hunk_list[hunk - 1]
-        # Count changed lines in this hunk
+        hunk_num = next(iter(selected_hunks))
+        target_hunk = hunk_list[hunk_num - 1]
         total_changes = sum(1 for l in target_hunk["lines"] if l and l[0] in ("+", "-"))
         selected = parse_spec(lines, total_changes)
 
@@ -323,29 +329,23 @@ def add_partial(file: str, list_hunks: bool, hunks: str, hunk: int, lines: str):
 
         patch = build_patch(header, [filtered])
         if apply_patch(patch):
-            click.echo(f"Staged lines {lines} from hunk {hunk} of {file}")
+            click.echo(f"Staged lines {lines} from hunk {hunk_num} of {file}")
         return
 
-    if hunks:
-        # Hunk-level staging
-        selected = parse_spec(hunks, len(hunk_list))
-        if not selected:
-            click.echo(f"No valid hunks selected (available: 1-{len(hunk_list)})", err=True)
-            sys.exit(1)
+    # Hunk-level staging
+    selected = parse_spec(hunk, len(hunk_list))
+    if not selected:
+        click.echo(f"No valid hunks selected (available: 1-{len(hunk_list)})", err=True)
+        sys.exit(1)
 
-        selected_hunks = []
-        for i in sorted(selected):
-            h = hunk_list[i - 1]
-            selected_hunks.append({
-                "header": h["header"],
-                "lines": h["lines"],
-            })
+    selected_hunks = []
+    for i in sorted(selected):
+        h = hunk_list[i - 1]
+        selected_hunks.append({
+            "header": h["header"],
+            "lines": h["lines"],
+        })
 
-        patch = build_patch(header, selected_hunks)
-        if apply_patch(patch):
-            click.echo(f"Staged hunk(s) {hunks} from {file}")
-        return
-
-    click.echo("Specify --list, --hunks, or --hunk with --lines")
-    sys.exit(1)
-# Another test
+    patch = build_patch(header, selected_hunks)
+    if apply_patch(patch):
+        click.echo(f"Staged hunk(s) {hunk} from {file}")

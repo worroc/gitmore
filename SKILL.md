@@ -11,10 +11,11 @@ Use `gitmore add-partial` when you need to selectively stage parts of a file.
 ## List available hunks
 
 ```bash
+gitmore add-partial <file>
 gitmore add-partial <file> -l
 ```
 
-Shows all hunks with numbered changed lines.
+Shows all hunks with numbered changed lines. This is the default when no flags are given.
 
 ## Stage specific hunks
 
@@ -27,10 +28,10 @@ gitmore add-partial <file> -H 1-3
 ## Stage specific lines within a hunk
 
 ```bash
-gitmore add-partial <file> -K 2 -L 1-3,5
+gitmore add-partial <file> -H 2 -L 1-3,5
 ```
 
-Where `-K` selects the hunk number and `-L` selects line numbers within that hunk.
+Where `-H` selects a single hunk number and `-L` selects line numbers within that hunk.
 
 ## When to use
 
